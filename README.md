@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![arXiv](https://img.shields.io/badge/arXiv-Coming%20Soon-red.svg)](https://arxiv.org)
+[![arXiv](https://img.shields.io/badge/arXiv-2512.18746-red.svg)]([https://arxiv.org](https://arxiv.org/abs/2512.18746))
 
 ![](assets/framework.png)
 
@@ -231,11 +231,14 @@ python evolve_cli.py validate \
 If you use MemEvolve in your research, please cite:
 
 ```bibtex
-@article{memevolve2025,
-  title={MemEvolve: Meta-Evolution of Agent Memory Systems},
-  author={MemEvolve Contributors},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2025}
+@misc{zhang2025memevolvemetaevolutionagentmemory,
+      title={MemEvolve: Meta-Evolution of Agent Memory Systems}, 
+      author={Guibin Zhang and Haotian Ren and Chong Zhan and Zhenhong Zhou and Junhao Wang and He Zhu and Wangchunshu Zhou and Shuicheng Yan},
+      year={2025},
+      eprint={2512.18746},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2512.18746}, 
 }
 ```
 
