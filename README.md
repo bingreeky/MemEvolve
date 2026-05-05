@@ -1,6 +1,6 @@
 <div align="center">
 
-# MemEvolve: Meta-Evolution of Agent Memory Systems
+# [ICML'26] MemEvolve: Meta-Evolution of Agent Memory Systems
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -10,7 +10,10 @@
 
 </div>
 
+
 ## Introduction
+
+>  **🎉🎉🎉 MemEvolve has been accepted by ICML 2026!**
 
 This repo is the official implementation of **MemEvolve: Meta-Evolution of Agent Memory Systems**.
 
