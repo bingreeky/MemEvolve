@@ -1,0 +1,10 @@
+# 密钥，绝不提交
+.env
+
+# Python 虚拟环境和缓存
+.venv/
+__pycache__/
+*.pyc
+
+# macOS 系统文件
+.DS_Store
