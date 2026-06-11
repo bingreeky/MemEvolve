@@ -8,3 +8,10 @@ __pycache__/
 
 # macOS 系统文件
 .DS_Store
+
+# 第三方评测代码（评审可按 README 自行下载）
+xbench-evals-main/
+
+# 实验输出（含解密后的题目明文，不上传公开仓库）
+xbench_output/
+*_output/
