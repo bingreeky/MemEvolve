@@ -1,3 +1,23 @@
+# 📋 考核作业：Memory Systems that Evolve（题目一）
+
+> 本仓库是 [bingreeky/MemEvolve](https://github.com/bingreeky/MemEvolve) 的 fork，用于「前沿 AI 方向在线考核 · 题目一」。所有新增内容以独立 commit/PR 叠加在原实现之上，便于区分原作者代码与本次工作。
+
+**实验**：Flash-Searcher + `deepseek-v4-flash`，在 xBench-DeepSearch 前 20 条任务上对比 4 个设置（每个 memory run 前清空记忆、串行积累）：
+
+| 设置 | 准确率 | 平均 token/任务 | 平均 API 调用 | memory 实际注入率 |
+|---|---|---|---|---|
+| No-Memory（对照） | **18/20 (90%)** | 189,015 | 15.8 | — |
+| **Lightweight**（MemEvolve 自动进化产物） | **18/20 (90%)** | 264,103 (+40%) | 27.3 (+73%) | 20/20 |
+| ExpeL（semantic baseline） | **17/20 (85%)** | 274,383 (+45%) | 18.2 | 19/20 |
+| Voyager（procedural baseline） | **18/20 (90%)** | 200,074 (+6%) | 16.7 | **0/20**（记忆库静默为空） |
+
+**主要发现**：强基线下 memory 的准确率收益≈0 且成本显著上升；收益（问题框架固定、策略迁移）与伤害（未验证中间结论被记忆"钉死"）集中在难题上互相抵消；Voyager 的技能抽取与深搜任务结构性不匹配、静默失效；另发现并修复了 xBench 判分统计恒为 0% 的 harness bug。
+
+📄 **完整报告（设置 / 结果 / case 分析 / limitation / 改进提案）：[REPORT.md](REPORT.md)**
+🔧 复现命令见 REPORT.md §1；结果汇总脚本：`Flash-Searcher-main/summarize_results.py`
+
+---
+
 <div align="center">
 
 # [ICML'26] MemEvolve: Meta-Evolution of Agent Memory Systems
