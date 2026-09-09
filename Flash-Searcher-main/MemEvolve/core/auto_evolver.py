@@ -168,7 +168,12 @@ class AutoEvolver:
         if checkpoint_file.exists():
             checkpoint_file.unlink()
 
-    def _run_memory_evolver(self, round_dir: Path, checkpoint: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _run_memory_evolver(
+        self,
+        round_dir: Path,
+        checkpoint: Optional[Dict[str, Any]] = None,
+        base_provider: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Run memory evolution pipeline with checkpoint support.
         
@@ -181,8 +186,21 @@ class AutoEvolver:
         This ensures each system is generated independently with its own analysis insights,
         rather than reusing a single analysis report for multiple systems.
         
+        Args:
+            base_provider: the reigning champion that produced this round's base_logs.
+                The diagnosis prompt, mutation template source and inspected memory
+                storage all derive from it. Must be passed explicitly (it is NOT the
+                original --provider, which becomes stale from round 1 onward).
+        
         Returns dict with keys: analysis, generation, creation, validation, validated_systems
         """
+        if not base_provider or not base_provider.strip():
+            raise ValueError(
+                "base_provider is required: must be the current champion "
+                "(state['best_provider']) that produced this round's base_logs, "
+                "not the initial --provider"
+            )
+        
         evolver = MemoryEvolver(
             work_dir=str(round_dir),
             analysis_model_id=self.analysis_model_id,
@@ -268,7 +286,7 @@ class AutoEvolver:
                     try:
                         result["analysis"] = evolver.analyze(
                             task_logs_dir=str(round_dir / "base_logs"),
-                            default_provider=self.default_provider,
+                            default_provider=base_provider,
                         )
                         if not result["analysis"].get("success"):
                             print(f"Warning: Analysis failed, continuing with limited info")
@@ -281,7 +299,7 @@ class AutoEvolver:
                 try:
                     result["analysis"] = evolver.analyze(
                         task_logs_dir=str(round_dir / "base_logs"),
-                        default_provider=self.default_provider,
+                        default_provider=base_provider,
                     )
                     if not result["analysis"].get("success"):
                         print(f"Warning: Analysis failed, continuing with limited info")
@@ -862,7 +880,7 @@ class AutoEvolver:
                 if checkpoint and checkpoint.get("step_completed", 0) >= 2:
                     print(f"[Checkpoint] Step 2 marked complete, checking for updates...")
                     # Even if step 2 is complete, check for CLI manual fixes
-                    evolution = self._run_memory_evolver(round_dir, checkpoint)
+                    evolution = self._run_memory_evolver(round_dir, checkpoint, base_provider=current_provider)
                     validated_systems = evolution.get("validated_systems", [])
                     
                     # If validated_systems changed (due to CLI fixes), update checkpoint
@@ -877,7 +895,7 @@ class AutoEvolver:
                         self._save_checkpoint(r, checkpoint)
                 else:
                     print(f"\nStep 2: Evolving memory systems")
-                    evolution = self._run_memory_evolver(round_dir, checkpoint)
+                    evolution = self._run_memory_evolver(round_dir, checkpoint, base_provider=current_provider)
                     validated_systems = evolution.get("validated_systems", [])
                     
                     checkpoint = checkpoint or {}

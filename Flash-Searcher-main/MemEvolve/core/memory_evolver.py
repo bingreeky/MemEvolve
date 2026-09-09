@@ -224,9 +224,12 @@ class MemoryEvolver:
             analysis_data = json.load(f)
         
         # Get default_provider from analyze phase
-        default_provider = self.state["phases"]["analyze"].get("default_provider", "agent_kb")
+        default_provider = self.state["phases"]["analyze"].get("default_provider")
         if not default_provider or default_provider.strip() == "":
-            raise ValueError("default_provider is required and cannot be empty")
+            raise ValueError(
+                "default_provider missing in analyze state — analyze() must run first; "
+                "refusing to silently fall back to the initial provider"
+            )
         print(f"  Using template provider: {default_provider}")
         
         generator = PhaseGenerator(
