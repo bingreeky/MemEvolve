@@ -166,54 +166,79 @@ class PhaseValidator:
         # Select test mode
         if self.use_fast_validation:
             print(f"  [Simulation Test]")
-            
-            for attempt in range(self.max_fix_attempts):
-                if attempt > 0:
-                    print(f"  [Simulation Test] Retry attempt {attempt + 1}")
-                
-                # Only setup isolated environment on first attempt
-                # Subsequent attempts reuse the environment with fixes applied
-                setup_env = (attempt == 0)
-                fast_result = self._run_fast_validation(system_name, setup_env=setup_env)
-                report["fast_validation"] = fast_result
-                
-                if fast_result.get("verdict") == "passed":
-                    report["verdict"] = "passed"
-                    report["logs"].append("Simulation test passed: all core methods available")
-                    print(f"    Simulation test passed")
-                    
+
+            try:
+                for attempt in range(self.max_fix_attempts):
                     if attempt > 0:
-                        self._sync_to_real_environment(system_name)
-                        report["logs"].append(f"Fixed code synced to real environment after {attempt} fix attempts")
-                    
-                    break
-                else:
-                    report["verdict"] = "failed_simulation"
-                    error_summary = "; ".join(fast_result.get("errors", [])[:3])
-                    report["logs"].append(f"Simulation test failed: {error_summary}")
-                    report["error_logs"] = fast_result.get("error_logs", [])
-                    print(f"    Simulation test failed: {error_summary[:100]}")
-                    
-                    if self.enable_auto_fix and attempt < self.max_fix_attempts - 1:
-                        print(f"  [Auto-Fix] Attempting to fix errors...")
-                        
-                        swe_validator = SWEAgentValidator(
-                            work_dir=self.temp_dir,
-                            isolated_env_dir=self.isolated_env_dir
-                        )
-                        
-                        fix_success = swe_validator.fix_memory_system(
-                            memory_system_name=system_name,
-                            error_report=fast_result
-                        )
-                        
-                        if fix_success:
-                            print(f"  [Auto-Fix] Fix applied, retrying validation...")
+                        print(f"  [Simulation Test] Retry attempt {attempt + 1}")
+
+                    # Only setup isolated environment on first attempt
+                    # Subsequent attempts reuse the environment with fixes applied
+                    setup_env = (attempt == 0)
+                    fast_result = self._run_fast_validation(system_name, setup_env=setup_env)
+                    report["fast_validation"] = fast_result
+
+                    if fast_result.get("verdict") == "passed":
+                        report["logs"].append("Simulation test passed: all core methods available")
+                        print(f"    Simulation test passed")
+
+                        if attempt > 0:
+                            # The fix produced by auto-fix lives only in the
+                            # isolated environment. It MUST be synced back to the
+                            # real tree, otherwise the deployed provider still has
+                            # the original bug and fails to load at task time. Do
+                            # not report the system as passed unless the sync
+                            # actually succeeds.
+                            synced = self._sync_to_real_environment(system_name)
+                            if synced:
+                                report["verdict"] = "passed"
+                                report["logs"].append(f"Fixed code synced to real environment after {attempt} fix attempts")
+                            else:
+                                report["verdict"] = "failed_sync"
+                                report["logs"].append(f"Fix passed simulation after {attempt} fix attempt(s) but could NOT be synced to the real environment; deployed provider left unchanged")
+                                print(f"    Failed to sync fixed code to real environment")
                         else:
-                            print(f"  [Auto-Fix] Fix failed")
-                            break
-                    else:
+                            report["verdict"] = "passed"
+
                         break
+                    else:
+                        report["verdict"] = "failed_simulation"
+                        error_summary = "; ".join(fast_result.get("errors", [])[:3])
+                        report["logs"].append(f"Simulation test failed: {error_summary}")
+                        report["error_logs"] = fast_result.get("error_logs", [])
+                        print(f"    Simulation test failed: {error_summary[:100]}")
+
+                        if self.enable_auto_fix and attempt < self.max_fix_attempts - 1:
+                            print(f"  [Auto-Fix] Attempting to fix errors...")
+
+                            swe_validator = SWEAgentValidator(
+                                work_dir=self.temp_dir,
+                                isolated_env_dir=self.isolated_env_dir
+                            )
+
+                            fix_success = swe_validator.fix_memory_system(
+                                memory_system_name=system_name,
+                                error_report=fast_result
+                            )
+
+                            if fix_success:
+                                print(f"  [Auto-Fix] Fix applied, retrying validation...")
+                            else:
+                                print(f"  [Auto-Fix] Fix failed")
+                                break
+                        else:
+                            break
+            finally:
+                # Clean up the isolated environment exactly once, after the
+                # retry/sync loop has finished. Doing it here (instead of inside
+                # _run_fast_validation) guarantees a fix is never deleted before
+                # it has been synced to the real tree.
+                if self.cleanup_temp and self.isolated_env_dir and self.isolated_env_dir.exists():
+                    try:
+                        shutil.rmtree(self.isolated_env_dir)
+                        print(f"    Cleaned up isolated environment")
+                    except Exception as e:
+                        print(f"    Warning: Failed to cleanup isolated environment: {e}")
         else:
             print(f"  [Real-World Task Test] (Not implemented with fast validation)")
             report["verdict"] = "skipped"
@@ -800,15 +825,12 @@ class PhaseValidator:
             os.chdir(original_cwd)
             sys.path = original_sys_path
             os.environ["PYTHONPATH"] = original_pythonpath
-            
-            if self.cleanup_temp and result.get("verdict") == "passed" and self.isolated_env_dir:
-                if self.isolated_env_dir.exists():
-                    try:
-                        shutil.rmtree(self.isolated_env_dir)
-                        print(f"    Cleaned up isolated environment")
-                    except Exception as e:
-                        print(f"    Warning: Failed to cleanup isolated environment: {e}")
-        
+
+            # NOTE: the isolated environment is intentionally NOT cleaned up
+            # here. On a retry that passes, it still holds the auto-fixed
+            # provider that must be synced to the real tree first. Cleanup is
+            # handled once, in _validate_single_system, after syncing.
+
         return result
 
     def _sync_to_real_environment(self, system_name: str) -> bool:
